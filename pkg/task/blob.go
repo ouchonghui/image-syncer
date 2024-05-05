@@ -2,8 +2,8 @@ package task
 
 import (
 	"fmt"
-
 	"github.com/docker/go-units"
+	"gorm.io/gorm"
 
 	"github.com/AliyunContainerService/image-syncer/pkg/sync"
 	"github.com/containers/image/v5/types"
@@ -93,4 +93,8 @@ func (b *BlobTask) String() string {
 
 func (b *BlobTask) Type() Type {
 	return BlobType
+}
+
+func (u *BlobTask) SetDB(DB1 *gorm.DB) bool {
+	return true
 }

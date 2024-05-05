@@ -23,6 +23,8 @@ type Config struct {
 	// a <source_repo>:<dest_repo> map
 	ImageList map[string]interface{} `json:"images" yaml:"images"`
 
+	DbConf types.MyQLConf `json:"db" yaml:"db"`
+
 	// only images with selected os can be sync
 	osFilterList []string
 	// only images with selected architecture can be sync
@@ -30,7 +32,7 @@ type Config struct {
 }
 
 // NewSyncConfig creates a Config struct
-func NewSyncConfig(configFile, authFilePath, imageFilePath string,
+func NewSyncConfig(configFile, authFilePath, imageFilePath, dbFile string,
 	osFilterList, archFilterList []string, logger *logrus.Logger) (*Config, error) {
 	if len(configFile) == 0 && len(imageFilePath) == 0 {
 		return nil, fmt.Errorf("neither config.json nor images.json is provided")
@@ -41,7 +43,17 @@ func NewSyncConfig(configFile, authFilePath, imageFilePath string,
 			"config.json nor auth.json provided, image-syncer may not work fine.")
 	}
 
+	if len(dbFile) == 0 {
+		return nil, fmt.Errorf("db.json or db.yaml is not provided")
+	}
+
 	var config Config
+
+	if len(dbFile) != 0 {
+		if err := openAndDecode(dbFile, &config.DbConf); err != nil {
+			return nil, fmt.Errorf("decode config file %v failed, error %v", dbFile, err)
+		}
+	}
 
 	if len(configFile) != 0 {
 		if err := openAndDecode(configFile, &config); err != nil {

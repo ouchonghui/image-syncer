@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"gorm.io/gorm"
 
 	"github.com/AliyunContainerService/image-syncer/pkg/utils"
 
@@ -99,4 +100,8 @@ func (m *ManifestTask) String() string {
 
 func (m *ManifestTask) Type() Type {
 	return ManifestType
+}
+
+func (u *ManifestTask) SetDB(DB1 *gorm.DB) bool {
+	return true
 }

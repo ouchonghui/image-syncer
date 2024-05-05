@@ -2,7 +2,11 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/AliyunContainerService/image-syncer/pkg/utils/db"
+	"github.com/AliyunContainerService/image-syncer/pkg/utils/types"
+	"gorm.io/gorm"
 	"os"
 	"time"
 
@@ -13,7 +17,6 @@ import (
 
 	"github.com/AliyunContainerService/image-syncer/pkg/concurrent"
 	"github.com/AliyunContainerService/image-syncer/pkg/task"
-	"github.com/AliyunContainerService/image-syncer/pkg/utils/types"
 )
 
 // Client describes a synchronization client
@@ -38,12 +41,12 @@ type Client struct {
 }
 
 // NewSyncClient creates a synchronization client
-func NewSyncClient(configFile, authFile, imagesFile, logFile, successImagesFile, outputImagesFormat string,
+func NewSyncClient(configFile, authFile, imagesFile, dbFile, logFile, successImagesFile, outputImagesFormat string,
 	routineNum, retries int, osFilterList, archFilterList []string, forceUpdate bool) (*Client, error) {
 
 	logger := NewFileLogger(logFile)
 
-	config, err := NewSyncConfig(configFile, authFile, imagesFile, osFilterList, archFilterList, logger)
+	config, err := NewSyncConfig(configFile, authFile, imagesFile, dbFile, osFilterList, archFilterList, logger)
 	if err != nil {
 		return nil, fmt.Errorf("generate config error: %v", err)
 	}
@@ -71,6 +74,13 @@ func NewSyncClient(configFile, authFile, imagesFile, logFile, successImagesFile,
 // Run is main function of a synchronization client
 func (c *Client) Run() error {
 	start := time.Now()
+
+	// Init DB
+	err := db.InitDB(c.config.DbConf)
+	if err != nil {
+		return fmt.Errorf("failed to close database: %v", err)
+	}
+	defer db.Close()
 
 	imageList, err := types.NewImageList(c.config.ImageList)
 	if err != nil {
@@ -105,6 +115,8 @@ func (c *Client) Run() error {
 			return
 		}
 
+		tTask.SetDB(db.DB)
+
 		nextTasks, message, err := tTask.Run()
 		count, total := c.taskCounter.Increase()
 		finishedNumString := color.New(color.FgGreen).Sprintf("%d", count)
@@ -125,6 +137,41 @@ func (c *Client) Run() error {
 				c.logger.Infof("Finish %v: %v. Now %v/%v tasks have been processed.", tTask.String(), message,
 					finishedNumString, totalNumString)
 			} else {
+				if tTask.Type() == task.ManifestType {
+					if tTask.GetPrimary() == nil && "latest" != tTask.GetSource().GetTagOrDigest() {
+						// 如果manifest为空，代表该标签全部同步完成，同步数据库状态
+						var imagesSync types.ImagesSync
+						err = db.DB.Model(&imagesSync).Where(types.ImagesSync{
+							SourceRegistry: tTask.GetSource().GetRegistry(),
+							SourceRepo:     tTask.GetSource().GetRepository(),
+							SourceTag:      tTask.GetSource().GetTagOrDigest(),
+							DestRegistry:   tTask.GetDestination().GetRegistry(),
+							DestRepo:       tTask.GetDestination().GetRepository(),
+							DestTag:        tTask.GetDestination().GetTagOrDigest()}).First(&imagesSync).Error
+
+						if errors.Is(err, gorm.ErrRecordNotFound) {
+							db.DB.Create(&types.ImagesSync{
+								SourceRegistry: tTask.GetSource().GetRegistry(),
+								SourceRepo:     tTask.GetSource().GetRepository(),
+								SourceTag:      tTask.GetSource().GetTagOrDigest(),
+								DestRegistry:   tTask.GetDestination().GetRegistry(),
+								DestRepo:       tTask.GetDestination().GetRepository(),
+								DestTag:        tTask.GetDestination().GetTagOrDigest(),
+								SyncStatus:     "1",
+								CreateTime:     time.Now(),
+								UpdateTime:     time.Now()})
+						} else if err != nil {
+							c.logger.Errorf("%v:%v failed to update database: %v",
+								tTask.GetSource().GetRepository(),
+								tTask.GetSource().GetTagOrDigest(),
+								err)
+						} else {
+							db.DB.Model(&imagesSync).Updates(types.ImagesSync{SyncStatus: "1", UpdateTime: time.Now()})
+						}
+						c.logger.Infof("Update %v:%v Database Sync Status", tTask.GetSource().GetRepository(),
+							tTask.GetSource().GetTagOrDigest())
+					}
+				}
 				c.logger.Infof("Finish %v. Now %v/%v tasks have been processed.", tTask.String(),
 					finishedNumString, totalNumString)
 			}

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	logPath, configFile, authFile, imagesFile, successImagesFile, outputImagesFormat string
+	logPath, configFile, authFile, imagesFile, dbFile, successImagesFile, outputImagesFormat string
 
 	procNum, retries int
 
@@ -32,13 +32,14 @@ var RootCmd = &cobra.Command{
 		cmd.SilenceErrors = true
 
 		// work starts here
-		client, err := client.NewSyncClient(configFile, authFile, imagesFile, logPath, successImagesFile, outputImagesFormat,
+		client, err := client.NewSyncClient(configFile, authFile, imagesFile, dbFile, logPath, successImagesFile, outputImagesFormat,
 			procNum, retries, utils.RemoveEmptyItems(osFilterList), utils.RemoveEmptyItems(archFilterList), forceUpdate)
 		if err != nil {
 			return fmt.Errorf("init sync client error: %v", err)
 		}
 
 		cmd.SilenceUsage = true
+
 		return client.Run()
 	},
 }
@@ -47,6 +48,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&configFile, "config", "", "config file path. This flag is deprecated and will be removed in the future. Please use --auth and --images instead.")
 	RootCmd.PersistentFlags().StringVar(&authFile, "auth", "", "auth file path. This flag need to be pair used with --images.")
 	RootCmd.PersistentFlags().StringVar(&imagesFile, "images", "", "images file path. This flag need to be pair used with --auth")
+	RootCmd.PersistentFlags().StringVar(&dbFile, "db", "", "db config file path. This flag need to be pair used with --db")
 	RootCmd.PersistentFlags().StringVar(&logPath, "log", "", "log file path (default in os.Stderr)")
 	RootCmd.PersistentFlags().IntVarP(&procNum, "proc", "p", 5, "numbers of working goroutines")
 	RootCmd.PersistentFlags().IntVarP(&retries, "retries", "r", 2, "times to retry failed task")

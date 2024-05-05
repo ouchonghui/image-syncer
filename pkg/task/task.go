@@ -2,6 +2,7 @@ package task
 
 import (
 	"github.com/AliyunContainerService/image-syncer/pkg/sync"
+	"gorm.io/gorm"
 )
 
 type Type string
@@ -35,4 +36,6 @@ type Task interface {
 	String() string
 
 	Type() Type
+
+	SetDB(DB1 *gorm.DB) bool
 }

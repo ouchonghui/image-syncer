@@ -1,18 +1,22 @@
 package task
 
 import (
+	"errors"
 	"fmt"
-	"strings"
-
-	"github.com/AliyunContainerService/image-syncer/pkg/utils/types"
-
 	"github.com/AliyunContainerService/image-syncer/pkg/concurrent"
+	"github.com/AliyunContainerService/image-syncer/pkg/utils/db"
+	"github.com/AliyunContainerService/image-syncer/pkg/utils/types"
 	"github.com/containers/image/v5/manifest"
+	"gorm.io/gorm"
+	"strings"
+	"time"
 
 	"github.com/AliyunContainerService/image-syncer/pkg/utils"
 
 	"github.com/AliyunContainerService/image-syncer/pkg/sync"
 )
+
+var DB *gorm.DB
 
 // URLTask converts an image RepoURL pair (specific tag) to BlobTask(s) and ManifestTask(s).
 type URLTask struct {
@@ -43,6 +47,38 @@ func NewURLTask(source, destination *utils.RepoURL,
 }
 
 func (u *URLTask) Run() ([]Task, string, error) {
+	// 检查是否已同步
+	if u.source.GetTagOrDigest() != "latest" {
+		var imagesSync types.ImagesSync
+		err := DB.Model(&imagesSync).Where(types.ImagesSync{
+			SourceRegistry: u.source.GetRegistry(),
+			SourceRepo:     u.source.GetRepo(),
+			SourceTag:      u.source.GetTagOrDigest(),
+			DestRegistry:   u.destination.GetRegistry(),
+			DestRepo:       u.destination.GetRepo(),
+			DestTag:        u.destination.GetTagOrDigest()}).First(&imagesSync).Error
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			DB.Create(&types.ImagesSync{
+				SourceRegistry: u.source.GetRegistry(),
+				SourceRepo:     u.source.GetRepo(),
+				SourceTag:      u.source.GetTagOrDigest(),
+				DestRegistry:   u.destination.GetRegistry(),
+				DestRepo:       u.destination.GetRepo(),
+				DestTag:        u.destination.GetTagOrDigest(),
+				SyncStatus:     "0",
+				CreateTime:     time.Now(),
+				UpdateTime:     time.Now()})
+		} else if err != nil {
+			return nil, "", fmt.Errorf("URLTask %v:%v failed to update database: %v",
+				u.source.GetRepo(),
+				u.source.GetTagOrDigest(),
+				err)
+		} else if "1" == imagesSync.SyncStatus {
+			return nil, "skip synchronization because destination image exists database", nil
+		}
+	}
+
 	imageSource, err := sync.NewImageSource(u.source.GetRegistry(), u.source.GetRepo(), u.source.GetTagOrDigest(),
 		u.sourceAuth.Username, u.sourceAuth.Password, u.sourceAuth.Insecure)
 	if err != nil {
@@ -119,6 +155,38 @@ func (u *URLTask) generateSyncTasks(source *sync.ImageSource, destination *sync.
 	if changed := destination.CheckManifestChanged(destManifestBytes, nil); !u.forceUpdate && !changed {
 		// do nothing if image is unchanged
 		resultMsg = "skip synchronization because destination image exists"
+
+		if u.source.GetTagOrDigest() != "latest" {
+			var imagesSync types.ImagesSync
+			err := DB.Model(&imagesSync).Where(types.ImagesSync{
+				SourceRegistry: u.source.GetRegistry(),
+				SourceRepo:     u.source.GetRepo(),
+				SourceTag:      u.source.GetTagOrDigest(),
+				DestRegistry:   u.destination.GetRegistry(),
+				DestRepo:       u.destination.GetRepo(),
+				DestTag:        u.destination.GetTagOrDigest()}).First(&imagesSync).Error
+
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				DB.Create(&types.ImagesSync{
+					SourceRegistry: u.source.GetRegistry(),
+					SourceRepo:     u.source.GetRepo(),
+					SourceTag:      u.source.GetTagOrDigest(),
+					DestRegistry:   u.destination.GetRegistry(),
+					DestRepo:       u.destination.GetRepo(),
+					DestTag:        u.destination.GetTagOrDigest(),
+					SyncStatus:     "1",
+					CreateTime:     time.Now(),
+					UpdateTime:     time.Now()})
+			} else if err != nil {
+				return nil, resultMsg, fmt.Errorf("%v:%v failed to update database: %v",
+					u.source.GetRepo(),
+					u.source.GetTagOrDigest(),
+					err)
+			} else {
+				db.DB.Model(&imagesSync).Updates(types.ImagesSync{SyncStatus: "1", UpdateTime: time.Now()})
+			}
+		}
+
 		return nil, resultMsg, nil
 	}
 
@@ -179,4 +247,9 @@ func (u *URLTask) generateSyncTasks(source *sync.ImageSource, destination *sync.
 	}
 
 	return results, resultMsg, nil
+}
+
+func (u *URLTask) SetDB(DB1 *gorm.DB) bool {
+	DB = DB1
+	return true
 }

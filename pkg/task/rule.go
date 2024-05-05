@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"gorm.io/gorm"
 
 	"github.com/AliyunContainerService/image-syncer/pkg/utils/types"
 
@@ -142,4 +143,8 @@ func checkSourceAndDestinationURLs(sourceURLs, destinationURLs []*utils.RepoURL)
 	}
 
 	return nil
+}
+
+func (u *RuleTask) SetDB(DB1 *gorm.DB) bool {
+	return true
 }
