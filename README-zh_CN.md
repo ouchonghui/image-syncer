@@ -1,13 +1,5 @@
 # image-syncer
 
-![workflow check](https://github.com/AliyunContainerService/image-syncer/actions/workflows/check.yml/badge.svg)
-![workflow build](https://github.com/AliyunContainerService/image-syncer/actions/workflows/synctest.yml/badge.svg)
-[![Version](https://img.shields.io/github/v/release/AliyunContainerService/image-syncer)](https://github.com/AliyunContainerService/image-syncer/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/AliyunContainerService/image-syncer)](https://goreportcard.com/report/github.com/AliyunContainerService/image-syncer)
-[![Github All Releases](https://img.shields.io/github/downloads/AliyunContainerService/image-syncer/total.svg)](https://api.github.com/repos/AliyunContainerService/image-syncer/releases)
-[![codecov](https://codecov.io/gh/AliyunContainerService/image-syncer/graph/badge.svg)](https://codecov.io/gh/AliyunContainerService/image-syncer)
-[![License](https://img.shields.io/github/license/AliyunContainerService/image-syncer)](https://www.apache.org/licenses/LICENSE-2.0.html)
-
 `image-syncer` 是一个容器镜像同步工具，可用来进行多对多的镜像仓库同步，支持目前绝大多数主流的 docker 镜像仓库服务
 
 [English](./README.md) | 简体中文
@@ -30,13 +22,13 @@
 
 ### 下载和安装
 
-在 [releases](https://github.com/AliyunContainerService/image-syncer/releases) 页面可下载源码以及二进制文件
+在 [releases](https://github.com/ouchonghui/image-syncer/releases) 页面可下载源码以及二进制文件
 
 ### 手动编译
 
 ```bash
-go get github.com/AliyunContainerService/image-syncer
-cd $GOPATH/github.com/AliyunContainerService/image-syncer
+go get github.com/ouchonghui/image-syncer
+cd $GOPATH/github.com/ouchonghui/image-syncer
 
 # This will create a binary file named image-syncer
 make
@@ -48,7 +40,7 @@ make
 # 获得帮助信息
 ./image-syncer -h
 
-./image-syncer --proc=6 --auth=./auth.json --images=./images.json --auth=./auth.json --retries=3
+./image-syncer --proc=6 --auth=./auth.json --images=./images.json --auth=./auth.json --db=./db.json --retries=3
 ```
 
 ### 配置文件
@@ -108,6 +100,18 @@ quay.io/coreos/kube-rbac-proxy:v1.1:
 quay.io/coreos/kube-rbac-proxy:/a+/: quay.io/ruohe/kube-rbac-proxy
 ```
 
+#### 数据库连接信息
+
+具体文件样例可以参考 [db.yaml](examples/db.yaml) 和 [db.json](examples/db.json)，这里以 [db.yaml](examples/db.yaml) 为例。 示例如下：
+
+```yaml
+host: 127.0.0.1
+port: 3306
+username: demo
+password: demo
+dbname: demo
+```
+
 ### 更多参数
 
 `image-syncer` 的使用比较简单，但同时也支持多个命令行参数的指定：
@@ -121,6 +125,8 @@ quay.io/coreos/kube-rbac-proxy:/a+/: quay.io/ruohe/kube-rbac-proxy
     --auth       设置用户提供的认证文件所在路径，使用之前需要创建此认证文件，默认为当前工作目录下的auth.json文件
 
     --images     设置用户提供的镜像同步规则文件所在路径，使用之前需要创建此文件，默认为当前工作目录下的images.json文件
+    
+    --db         设置数据库连接信息
 
     --log        打印出来的log文件路径，默认打印到标准错误输出，如果将日志打印到文件将不会有命令行输出，此时需要通过cat对应的日志文件查看
 

@@ -1,13 +1,5 @@
 # image-syncer
 
-![workflow check](https://github.com/AliyunContainerService/image-syncer/actions/workflows/check.yml/badge.svg)
-![workflow build](https://github.com/AliyunContainerService/image-syncer/actions/workflows/synctest.yml/badge.svg)
-[![Version](https://img.shields.io/github/v/release/AliyunContainerService/image-syncer)](https://github.com/AliyunContainerService/image-syncer/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/AliyunContainerService/image-syncer)](https://goreportcard.com/report/github.com/AliyunContainerService/image-syncer)
-[![Github All Releases](https://img.shields.io/github/downloads/AliyunContainerService/image-syncer/total.svg)](https://api.github.com/repos/AliyunContainerService/image-syncer/releases)
-[![codecov](https://codecov.io/gh/AliyunContainerService/image-syncer/graph/badge.svg)](https://codecov.io/gh/AliyunContainerService/image-syncer)
-[![License](https://img.shields.io/github/license/AliyunContainerService/image-syncer)](https://www.apache.org/licenses/LICENSE-2.0.html)
-
 `image-syncer` is a docker registry tools. With `image-syncer` you can synchronize docker images from some source registries to target registries, which include most popular public docker registry services.
 
 English | [简体中文](./README-zh_CN.md)
@@ -30,13 +22,13 @@ You can use [image-sync-action](https://github.com/marketplace/actions/image-syn
 
 ### Install image-syncer
 
-You can download the latest binary release [here](https://github.com/AliyunContainerService/image-syncer/releases)
+You can download the latest binary release [here](https://github.com/ouchonghui/image-syncer/releases)
 
 ### Compile Manually
 
 ```bash
-go get github.com/AliyunContainerService/image-syncer
-cd $GOPATH/github.com/AliyunContainerService/image-syncer
+go get github.com/ouchonghui/image-syncer
+cd $GOPATH/github.com/ouchonghui/image-syncer
 
 # This will create a binary file named image-syncer
 make
@@ -48,7 +40,7 @@ make
 # Get usage information
 ./image-syncer -h
 
-./image-syncer --proc=6 --auth=./auth.json --images=./images.json --auth=./auth.json --retries=3
+./image-syncer --proc=6 --auth=./auth.json --images=./images.json --auth=./auth.json --db=./db.json --retries=3
 ```
 
 ### Configure Files
@@ -107,6 +99,18 @@ quay.io/coreos/kube-rbac-proxy:v1.1:
 quay.io/coreos/kube-rbac-proxy:/a+/: quay.io/ruohe/kube-rbac-proxy
 ```
 
+#### Database configuration file
+
+You can find the example in [db.yaml](examples/db.yaml) and [db.json](examples/db.json), here we use [db.yaml](examples/db.yaml) for explaination:
+
+```yaml
+host: 127.0.0.1
+port: 3306
+username: demo
+password: demo
+dbname: demo
+```
+
 ### Parameters
 
 ```
@@ -121,6 +125,8 @@ quay.io/coreos/kube-rbac-proxy:/a+/: quay.io/ruohe/kube-rbac-proxy
 
     --images     Set the path of image rules file, this file need to be created before starting synchronization, default
                  config file is at "current/working/directory/images.json". This flag need to be pair used with --auth.
+                 
+    --db         Set database conf info
 
     --log        Set the path of log file, logs will be printed to Stderr by default
 
@@ -139,7 +145,3 @@ quay.io/coreos/kube-rbac-proxy:/a+/: quay.io/ruohe/kube-rbac-proxy
 ### FAQs
 
 Frequently asked questions are listed in [FAQs](./FAQs.md)
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AliyunContainerService/image-syncer&type=Date)](https://star-history.com/#AliyunContainerService/image-syncer)
