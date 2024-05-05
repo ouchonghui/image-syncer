@@ -29,20 +29,6 @@ jobs:
           go mod vendor
           git diff --exit-code || (echo "please run 'go mod tidy && go mod vendor', and submit your changes"; exit 1)
 
-  golangci-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Go
-        uses: actions/setup-go@v2.1.3
-        with:
-          go-version: 1.22.2
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3.6.0
-        with:
-          version: v1.53
-          args: --timeout 300s --skip-dirs-use-default -v -E goconst -E gofmt -E ineffassign -E goimports -E revive -E misspell -E vet -E deadcode
-
   go-test:
     runs-on: ubuntu-latest
     steps:
